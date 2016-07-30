@@ -1,0 +1,222 @@
+[Usage of region information]
+
+Each image will be segmented into regions defined by boundary boxes
+and masks and described in *.OIF file. To know how to extract region
+information please reference the sample code "SampleRegionInfo.java" and
+"RegionInfoDoc.txt".
+
+* Sample code
+	sample.SampleRegionInfo
+	Each image will be segmented into regions defined by boundary boxes
+	and masks and are described in *.oif files. This program shows how 
+	to extract region information from *.oif files.
+	
+	This program is complied with ..\mksample.bat, and it is run with ..\runsample.bat.
+	** Please make sure the Java environment is well configured.
+
+* Explanation about RegionInfo class
+	Region information can be handled using RegionInfo class. The following 
+	is the explanation about the class.
+
+1. Members
+
+	public int id  -- region id
+	public int pixelnum -- number of pixels within the region
+	public float[] feat1 -- mean color of the region (feat1[0]:L, feat1[1]:u, feat1[2]:v )
+	public float[] feat2 -- motion parameters of the region. motion is compensated by the following equation:
+        x= feat2[0] + feat2[1] * x0 + feat2[2] * y0 + feat2[6] * x0 * x0 + feat2[7] * x0 * y0 + x0,
+        y= feat2[3] + feat2[4] * x0 + feat2[5] * y0 + feat2[6] * x0 * y0 + feat2[7] * y0 * y0 + y0
+      where (x0,y0) is a point in the current region and (x,y) is its corresponding point in the next frame. 
+	public Point ul -- the coordinate of the upper-left corner of the bounding box
+	public Point lr -- the coordinate of the lower-right corner of the bounding box 
+	public Hashtable con_regs -- List of the adjoining regions. 
+	public boolean[][] mask -- Mask information indicating the region shape. The mask size is the same as the bounding box of the region. Hence mask[0][0] indicates the mask information at the upper-left point of bounding box.
+	public int tag -- This can be used for several way. In the Object/GlobalDetection, tag is used for distinguishing
+       foreground and background regions. If tag = 1, the region indicates foreground, otherwise, background.
+
+
+2. Methods
+
+public RegionInfo(int id, float[] clr, int x, int y)
+	Arguments:
+		int id -- region ID.
+		float[] clr -- the Luv value for the pixel at (x,y).
+		int x -- x coordinate of the pixel included in the region
+		int y -- y coordinate of the pixel included in the region
+	Explanation:
+		Constructor of RegionInfo object. This makes RegionInfo object for the region including a single pixel (x,y).
+-------------------------------------------------------------------------------------------
+public RegionInfo(RegionInfo r)
+	Arguments:
+		RegionInfo r -- region information to be copied
+	Explanation:
+		Copy constructor of RegionInfo object.
+-------------------------------------------------------------------------------------------
+public static final RegionInfo[] read(String fname)
+	Arguments:
+		String fileName  -- The OIF file name from which the region information is read. 
+	Returned values:
+		Array of RegionInfo objects, each of which indicates a region in the image.
+	Explanation:
+		This method reads region information from the file designated by fname, and return the array of RegionInfo objects.
+-------------------------------------------------------------------------------------------
+public static final void write(String fname, RegionInfo[] rlist, int nextid, int fw, int fh, float[] gm_param )
+	Arguments:
+		String fname -- The OIF file name to which the region information is written.
+		RegionInfo[] rlist -- The array of region information
+		int nextid -- next region id (Currently this is not used, so any positive integer is all right)
+		int fw -- frame width (Currently this is not used, so any positive integer is all right)
+		int fh -- frame height (Currently this is not used, so any positive integer is all right)
+		float[] gm_param -- global motion parameters (Currently this is not used, but memory for these parameters should be allocated before calling. See the sample code.)
+	Returned values:
+		None
+	Explanation:
+		This method writes the array of region information rlist to the file designated by fname.
+-------------------------------------------------------------------------------------------
+public final int perimeter()
+	Arguments:
+		None
+	Returned values:
+		The perimeter of this region
+	Explanation:
+		This method finds the perimeter of this region and return the value.
+-------------------------------------------------------------------------------------------
+public final boolean imgxy( int x, int y )
+	Arguments:
+		int x -- x coordinate of the point
+		int y -- y coordinate of the point
+	Returned values:
+		True if the point is inside the region, and false otherwise.
+	Explanation:
+		This method is used for checking whether the point is inside the region or not.
+-------------------------------------------------------------------------------------------
+public final boolean isBorder(int x,int y)
+	Arguments:
+		int x -- x coordinate of the point
+		int y -- y coordinate of the point
+	Returned values:
+		True if it is a point on the border, and false otherwise.
+	Explanation:
+		This method is used for checking whether the point is on the border or not.
+-------------------------------------------------------------------------------------------
+public final boolean isNeighbor(int x, int y) 
+	Arguments:
+		int x -- x coordinate of the point
+		int y -- y coordinate of the point
+	Returned values:
+		True if it is an adjoining point, and false otherwise.
+	Explanation:
+		This method is used for checking whether the point adjoins this region or not.
+-------------------------------------------------------------------------------------------
+public static void merge(RegionInfo r0,RegionInfo r1)
+	Arguments:
+		RegionInfo r0 -- the first region information, which carries the merge result.
+		RegionInfo r1 -- the second region information.
+	Returned values:
+		None.
+	Explanation:
+		Regions r0 and r1 are merged. The merge result is included in r0.
+------------------------------------------------------------------------------------------
+public RegionInfo nearestNeighbor(float sqthresh, float[] w)
+	Arguments:
+		float sqthresh -- threshold to determine the upper-limit of mean color distance.
+		float[] w -- weight for calculating the mean color distance of the regions.
+	Returned values:
+		RegionInfo object with the closest mean color to this region.
+	Explanation:
+		This method finds the region with the closest mean color to this region among the adjoining regions, 
+		and the found region information is returned. If the difference in the mean colors are more than 
+		sqthresh for all the adjoining regions, the function returns null instead. The distance is calculated 
+		by
+     		d = w[0]*w[0]*DL*DL + w[1]*w[1]*Du*Du + w[2]*w[2]*Dv*Dv, 
+		where DL, Du and Dv denote the difference of mean L, u and v values between two regions.
+------------------------------------------------------------------------------------------
+public final void connect(RegionInfo nb)
+	Arguments:
+		RegionInfo nb -- region information to be connected to this region
+	Returned values:
+		None.
+	Explanation:
+		Connect the region nb to this region.
+------------------------------------------------------------------------------------------
+public final void disconnect()
+	Arguments:
+		None.
+	Returned values:
+		None.
+	Explanation:
+		Disconnect this region from all the adjoining regions.
+------------------------------------------------------------------------------------------
+public final int[] getConnectList()
+	Arguments:
+		None.
+	Returned values:
+		List of the IDs of the adjoining region.
+	Explanation:
+		This method returns the list of the IDs of the adjoining region. 
+------------------------------------------------------------------------------------------
+public static boolean[][] getMask(RegionInfo[] rlist, Rectangle rect)
+	Arguments:
+		RegionInfo[] rlist -- region information array.
+		Rectangle rect -- bouding box of combined mask.
+	Returned values:
+		2D boolean array indicating the combined mask information.
+	Explanation:
+		This method is used for geting combined mask of a list of regions. The mask size equals 
+		the given bounding box.
+------------------------------------------------------------------------------------------
+public static Rectangle getBoundingBox(RegionInfo[] rlist)
+	Arguments:
+		RegionInfo[] rlist -- A list of the regions.
+	Returned values:
+		Rectangle object indicating the bouding box of the regions included in rlist.
+	Explanation:
+		This method returns the bounding box for the region included in the list rlist.
+------------------------------------------------------------------------------------------
+public void printRandomColor() 
+	Arguments:
+		None.
+	Returned values:
+		None.
+	Explanation:
+		This method displays the color of the region in a region image to the stdout.
+------------------------------------------------------------------------------------------
+public final int intersectPixels(boolean[][] mask0, Point mask_ul)
+	Arguments:
+		boolean[][] mask0 -- the gievn mask information
+		Point mask_ul -- coordinate of the upper-left corner of the mask
+	Returned values:
+		The number of pixels included in intersection.
+	Explanation:
+		This methold counts the number of pixels in intersection region with mask0.
+------------------------------------------------------------------------------------------
+public final boolean[][] intersect(boolean[][] mask0, Point mask_ul)
+	Arguments:
+  		boolean[][] mask0 -- the given mask information.
+		Point mask_ul -- coordinate of upper-left corner of the given mask.
+	Returned values:
+		Mask for intersection
+	Explnaation:
+		This method computes the intersection of the region with a given mask.
+------------------------------------------------------------------------------------------
+public static boolean[][] getCloseOpenMask(RegionInfo[] rlist, Rectangle rect, float close_r, float open_r)
+	Arguments:
+		RegionInfo rlist -- Region information array
+		Rectangle rect -- Bounding box of combined mask
+		float close_r -- The radius of closing operator
+		float open_r -- The radius of opening operator
+	Returned values:
+		Resultant mask.
+	Explanation:
+		This method is used for getting morphologocal-closed mask of a list of regions. The mask size equals the given bounding box.
+------------------------------------------------------------------------------------------
+public static boolean[][] getOpenCloseMask(RegionInfo[] rlist, Rectangle rect, float open_r, float close_r) 
+	Arguments:
+		RegionInfo rlist -- Region information array
+		Rectangle rect -- Bounding box of combined mask
+		float open_r -- The radius of opening operator
+		float close_r -- The radius of closing operator
+	Returned values:
+		Resultant mask.
+	Explanation:
+		This method is used for getting morphological-opened then closed mask of a list of regions. The mask size equals the given bounding box.
